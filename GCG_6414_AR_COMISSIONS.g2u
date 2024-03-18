@@ -1,0 +1,1167 @@
+Program.Sub.ScreenSU.Start
+Gui.F_Com..Create
+Gui.F_Com..Caption("Commissions View")
+Gui.F_Com..Size(15705,10305)
+Gui.F_Com..MinX(0)
+Gui.F_Com..MinY(0)
+Gui.F_Com..Position(0,0)
+Gui.F_Com..BackColor(-2147483633)
+Gui.F_Com..MousePointer(0)
+Gui.F_Com..Event(UnLoad,Unload)
+Gui.F_Com..ContextMenuCreate("ctxComms")
+Gui.F_Com..ContextMenuAddItem("ctxComms","Export",0,"Export to Excel")
+Gui.F_Com..ContextMenuSetItemEventHandler("ctxComms","Export","Export")
+Gui.F_Com..ContextMenuCreate("ctxLines")
+Gui.F_Com..ContextMenuAddItem("ctxLines","Export",0,"Export to Excel")
+Gui.F_Com..ContextMenuSetItemEventHandler("ctxLines","Export","Export")
+Gui.F_Com.tabComs.Create(Tab)
+Gui.F_Com.tabComs.Size(15225,9105)
+Gui.F_Com.tabComs.Position(135,510)
+Gui.F_Com.tabComs.Anchor(15)
+Gui.F_Com.tabComs.Tabs(3)
+Gui.F_Com.tabComs.SetTab(0)
+Gui.F_Com.tabComs.Caption("Commissions")
+Gui.F_Com.tabComs.SetTab(1)
+Gui.F_Com.tabComs.Caption("Line Information")
+Gui.F_Com.tabComs.SetTab(2)
+Gui.F_Com.tabComs.Caption("Customer Accounts")
+Gui.F_Com.gsgcComms.Create(GsGridControl)
+Gui.F_Com.gsgcComms.Size(14970,8520)
+Gui.F_Com.gsgcComms.Position(60,165)
+Gui.F_Com.gsgcComms.Parent("tabComs",0)
+Gui.F_Com.gsgcComms.Anchor(15)
+Gui.F_Com.gsgcComms.ContextMenuAttach("ctxComms")
+Gui.F_Com.gsgcCustomers.Create(GsGridControl)
+Gui.F_Com.gsgcCustomers.Size(14970,8520)
+Gui.F_Com.gsgcCustomers.Position(60,165)
+Gui.F_Com.gsgcCustomers.Parent("tabComs",2)
+Gui.F_Com.gsgcCustomers.Anchor(15)
+Gui.F_Com.gsgcLines.Create(GsGridControl)
+Gui.F_Com.gsgcLines.Size(14970,8520)
+Gui.F_Com.gsgcLines.Position(60,165)
+Gui.F_Com.gsgcLines.Parent("tabComs",1)
+Gui.F_Com.gsgcLines.Anchor(15)
+Gui.F_Com.gsgcLines.ContextMenuAttach("ctxLines")
+Gui.F_Date..Create
+Gui.F_Date..Caption("Date Range")
+Gui.F_Date..Size(6750,2340)
+Gui.F_Date..MinX(0)
+Gui.F_Date..MinY(0)
+Gui.F_Date..Position(0,0)
+Gui.F_Date..BackColor(-2147483633)
+Gui.F_Date..MousePointer(0)
+Gui.F_Date..Event(UnLoad,EarlyUnload)
+Gui.F_Date.dtpFrom.Create(DatePicker)
+Gui.F_Date.dtpFrom.Size(1935,285)
+Gui.F_Date.dtpFrom.Position(345,630)
+Gui.F_Date.dtpTo.Create(DatePicker)
+Gui.F_Date.dtpTo.Size(1935,285)
+Gui.F_Date.dtpTo.Position(2970,630)
+Gui.F_Date.cmdOk.Create(Button)
+Gui.F_Date.cmdOk.Size(1575,375)
+Gui.F_Date.cmdOk.Position(4500,1230)
+Gui.F_Date.cmdOk.Caption("OK")
+Gui.F_Date.cmdOk.Event(Click,OkayButtonClick)
+Gui.F_Date.lbl1.Create(Label,"From",True,1935,255,0,360,345,True,0,"Arial",8,-2147483633,0)
+Gui.F_Date.lbl2.Create(Label,"To",True,1935,255,0,2970,345,True,0,"Arial",8,-2147483633,0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Customer: General Equipment 
+'Developer: FEQ (Sisco)
+'Date: 06/28/2021
+'This is a sales commissions dashboard that was created with intentions to have more visibility on the items that are paid commission on
+'This dashboard will grab information from the open items table and the history table, since General Equipment purges data regularly
+'The user will be given the option to select a date range for the 
+
+F.Intrinsic.Control.Try
+
+GUI.F_Date..Show
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.Error.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare(String, "")
+
+F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Caller.ScriptFile, V.Ambient.Newline, V.Args.Subroutine, V.Args.ErrorNo, V.Args.ErrorDesc, V.Ambient.GABVersion, V.Local.sError)
+
+F.Intrinsic.UI.Msgbox(V.Local.sError, "CRITICAL ERROR")
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.Exitsub
+F.Intrinsic.Control.EndTry
+Program.Sub.Error.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.CallSub(Serialize)
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Unload.End
+
+Program.Sub.GenerateData.Start
+F.Intrinsic.Control.Try
+V.Local.sSql.Declare(String, "")
+V.Local.sFilter.Declare(String, "")
+V.Local.bCheck.Declare(String, "")
+V.Local.dFro.Declare(Date, "01/01/1900")
+V.Local.dTo.Declare(Date, "01/01/1900")
+
+F.Intrinsic.Control.If(V.Screen.F_Date!dtpFrom.Value, <, V.Screen.F_Date!dtpTo.Value)
+	V.Local.dFro.Set(V.Screen.F_Date!dtpFrom.Value)
+	V.Local.dTo.Set(V.Screen.F_Date!dtpTo.Value)
+F.Intrinsic.Control.Else
+	V.Local.dFro.Set(V.Screen.F_Date!dtpTo.Value)
+	V.Local.dTo.Set(V.Screen.F_Date!dtpTo.Value)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conx.OpenCompanyConnection
+
+'We are going to be grabbing the selected dates and pulling the data from the open items and history table that fall into that date range
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(CUSTOMER)) as CUSTOMER, RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, DATE_INVOICE, DATE_TRANSACTION, AMT_INVOICE, AMT_TRANS_TOTAL, SALESPERSON, RTRIM(TERMS_CODE) as TERMS_CODE, DUE_DATE, BATCH_CODE, ORDER_NO, ORDER_SUFFIX from V_AR_OPEN_ITEMS where BATCH_CODE in ('11', '12', '16') and DATE_TRANSACTION between '{0}' and '{1}'", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL("dtOpen", "conx", V.Local.sSql, True)
+
+'Now grab the order number
+F.Data.Dictionary.CreateFromSQL("dicSO", "conx", "Select INVOICE, ORDER_NO from V_AR_OPEN_ITEMS where BATCH_CODE = '10' and ORDER_NO <> '0000000'")
+F.Data.Dictionary.SetDefaultReturn("dicSO", "")
+
+F.Data.DataTable.FillFromDictionary("dtOpen", "dicSO", "INVOICE", "ORDER_NO")
+
+F.Data.Dictionary.Close("dicSO")
+
+F.Data.Dictionary.CreateFromSQL("dicSOSU", "conx", "Select INVOICE, ORDER_SUFFIX from V_AR_OPEN_ITEMS where BATCH_CODE = '10' and ORDER_NO <> '0000000'")
+F.Data.Dictionary.SetDefaultReturn("dicSOSU", "")
+
+F.Data.DataTable.FillFromDictionary("dtOpen", "dicSOSU", "INVOICE", "ORDER_SUFFIX")
+
+F.Data.Dictionary.Close("dicSOSU")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(CUSTOMER)) as CUSTOMER, RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, DATE_INVOICE, DATE_TRANSACTION, AMT_INVOICE, AMT_TRANS_TOTAL, SALESPERSON, RTRIM(TERMS_CODE) as TERMS_CODE, DUE_DATE, BATCH_CODE, ORDER_NO, ORDER_SUFFIX from V_AR_HISTORY where BATCH_CODE in ('11', '12', '16') and DATE_TRANSACTION between '{0}' and '{1}'", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL("dtHist", "conx", V.Local.sSql, True)
+
+'Now grab the order number
+F.Data.Dictionary.CreateFromSQL("dicSO", "conx", "select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, ORDER_NO from V_AR_HISTORY where BATCH_CODE = '10' and ORDER_NO <> '0000000'")
+F.Data.Dictionary.SetDefaultReturn("dicSO", "")
+
+F.Data.DataTable.FillFromDictionary("dtHist", "dicSO", "INVOICE", "ORDER_NO")
+
+F.Data.Dictionary.Close("dicSO")
+
+F.Data.Dictionary.CreateFromSQL("dicSOSU", "conx", "select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, ORDER_SUFFIX from V_AR_HISTORY where BATCH_CODE = '10' and ORDER_NO <> '0000000'")
+F.Data.Dictionary.SetDefaultReturn("dicSOSU", "")
+
+F.Data.DataTable.FillFromDictionary("dtHist", "dicSOSU", "INVOICE", "ORDER_SUFFIX")
+
+F.Data.Dictionary.Close("dicSOSU")
+
+F.Data.DataTable.Merge("dtHist", "dtOpen", True, 2)
+
+F.Data.DataTable.Close("dtHist")
+
+F.Data.DataView.Create("dtOpen", "dvSums", 22, "", "INVOICE ASC")
+
+'wtftest------------------------------------------------------------------------------------------------------------------------------------------------
+F.Data.DataView.ToDataTableDistinct("dtOpen", "dvSums", "dtHeader", "INVOICE", True)
+F.Data.DataView.ToDataTableDistinct("dtOpen", "dvSums", "dtTest", "INVOICE", True)
+
+'F.Data.DataTable.AddRelation("dtHeader", "INVOICE", "dtHeader$dtTest", "INVOICE")
+
+F.Data.Dictionary.CreateFromDataView("dicOrdNo", "dtOpen", "dvSums", "INVOICE", "ORDER_NO")
+F.Data.Dictionary.SetDefaultReturn("dicOrdNo", "0.00")
+F.Data.DataTable.AddColumn("dtHeader", "ORDER_NO", "String")
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicOrdNo", "INVOICE", "ORDER_NO")
+F.Data.Dictionary.Close("dicOrdNo")
+
+F.Data.Dictionary.CreateFromDataView("dicCustomer", "dtOpen", "dvSums", "INVOICE", "CUSTOMER")
+F.Data.Dictionary.SetDefaultReturn("dicCustomer", "0.00")
+F.Data.DataTable.AddColumn("dtHeader", "CUSTOMER", "String")
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicCustomer", "INVOICE", "CUSTOMER")
+F.Data.Dictionary.Close("dicCustomer")
+
+F.Data.Dictionary.CreateFromDataView("dicSP", "dtOpen", "dvSums", "INVOICE", "SALESPERSON")
+F.Data.Dictionary.SetDefaultReturn("dicSP", "0.00")
+F.Data.DataTable.AddColumn("dtHeader", "SALESPERSON", "String")
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicSP", "INVOICE", "SALESPERSON")
+F.Data.Dictionary.Close("dicSP")
+
+F.Data.Dictionary.CreateFromDataView("dicTerms", "dtOpen", "dvSums", "INVOICE", "TERMS_CODE")
+F.Data.Dictionary.SetDefaultReturn("dicTerms", "0.00")
+F.Data.DataTable.AddColumn("dtHeader", "TERMS_CODE", "String")
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicTerms", "INVOICE", "TERMS_CODE")
+F.Data.Dictionary.Close("dicTerms")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_OPEN_ITEMS where BATCH_CODE = '11' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicOpenPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicOpenPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "OPEN_CASH", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicOpenPay", "INVOICE", "OPEN_CASH")
+
+F.Data.Dictionary.Close("dicOpenPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_HISTORY where BATCH_CODE = '11' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicHistPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicHistPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "HIST_CASH", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicHistPay", "INVOICE", "HIST_CASH")
+
+F.Data.Dictionary.Close("dicHistPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_OPEN_ITEMS where BATCH_CODE = '12' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicOpenPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicOpenPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "OPEN_MEMOS", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicOpenPay", "INVOICE", "OPEN_MEMOS")
+
+F.Data.Dictionary.Close("dicOpenPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_HISTORY where BATCH_CODE = '12' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicHistPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicHistPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "HIST_MEMOS", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicHistPay", "INVOICE", "HIST_MEMOS")
+
+F.Data.Dictionary.Close("dicHistPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_OPEN_ITEMS where BATCH_CODE = '16' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicOpenPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicOpenPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "OPEN_DISCOUNT", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicOpenPay", "INVOICE", "OPEN_DISCOUNT")
+
+F.Data.Dictionary.Close("dicOpenPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_HISTORY where BATCH_CODE = '16' and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicHistPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicHistPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "HIST_DISCOUNT", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicHistPay", "INVOICE", "HIST_DISCOUNT")
+
+F.Data.Dictionary.Close("dicHistPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_OPEN_ITEMS where BATCH_CODE not in ('10', '11', '12', '16') and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicOpenPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicOpenPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "OPEN_REMAIN", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicOpenPay", "INVOICE", "OPEN_REMAIN")
+
+F.Data.Dictionary.Close("dicOpenPay")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, 0 - SUM(AMT_INVOICE) from V_AR_HISTORY where BATCH_CODE not in ('10', '11', '12', '16') and DATE_TRANSACTION between '{0}' and '{1}' group by INVOICE", V.Local.dFro.PervasiveDate, V.Local.dTo.PervasiveDate, V.Local.sSql)
+F.Data.Dictionary.CreateFromSQL("dicHistPay", "conx", V.Local.sSql)
+F.Data.Dictionary.SetDefaultReturn("dicHistPay", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "HIST_REMAIN", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicHistPay", "INVOICE", "HIST_REMAIN")
+
+F.Data.Dictionary.Close("dicHistPay")
+
+'Pulling in the freight
+F.Data.Dictionary.CreateFromSQL("dicFreight", "conx", "Select RTRIM(LTRIM(UCASE(INVOICE))) as INVOICE, SUM(EXTENSION) from V_ORDER_HIST_LINE where ORDER_LINE = '8000' group by INVOICE")
+F.Data.Dictionary.SetDefaultReturn("dicFreight", "0.00")
+
+F.Data.DataTable.AddColumn("dtHeader", "FREIGHT_INVC", Float)
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicFreight", "INVOICE", "FREIGHT_INVC")
+
+F.Data.Dictionary.Close("dicFreight")
+
+'putting together the transactions recorded against the invoice:
+F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_CASH", "Float", "[OPEN_CASH] + [HIST_CASH]")
+F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_MEMOS", "Float", "[OPEN_MEMOS] + [HIST_MEMOS]")
+F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_DISCOUNT", "Float", "[OPEN_DISCOUNT] + [HIST_DISCOUNT]")
+F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_REMAIN", "Float", "[OPEN_REMAIN] + [HIST_REMAIN]")
+F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_PAY", "Float", "[TOTAL_CASH] + [TOTAL_MEMOS] + [TOTAL_REMAIN]")
+F.Data.DataTable.AddExpressionColumn("dtHeader", "INVC_PAY", "Float", "[TOTAL_PAY] - [FREIGHT_INVC]")
+
+''Total payment for the invoice
+'F.Data.DataTable.AddExpressionColumn("dtHeader", "INVC_PAY", "Float", "[OPEN_PAYMENTS] + [HIST_PAYMENTS] - [FREIGHT_INVC]")
+'F.Data.DataTable.AddExpressionColumn("dtHeader", "TOTAL_PAY", "Float", "[OPEN_PAYMENTS] + [HIST_PAYMENTS]")
+
+F.Data.DataTable.AddColumn("dtHeader", "COMM_RATE", "Float", "0.1")
+
+F.Data.DataTable.AddExpressionColumn("dtHeader", "COMM_PAY", "Float", "[INVC_PAY] * [COMM_RATE]")
+
+F.Data.DataTable.AddColumn("dtHeader", "AVOID", "Boolean", False)
+
+F.Data.Dictionary.CreateFromSQL("dicCust", "conx", "Select RTRIM(LTRIM(CUSTOMER)), NAME_CUSTOMER from V_CUSTOMER_MASTER")
+F.Data.Dictionary.SetDefaultReturn("dicCust", "")
+
+F.Data.DataTable.AddColumn("dtHeader", "NAME_CUSTOMER", "String")
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicCust", "CUSTOMER", "NAME_CUSTOMER")
+
+F.Data.Dictionary.Close("dicCust")
+
+F.Data.Dictionary.CreateFromSQL("dicSP", "conx", "Select ID, RTRIM(NAME) as SP_NAME from V_SALESPERSONS order by ID ASC")
+F.Data.Dictionary.SetDefaultReturn("dicSP", "")
+
+F.Data.DataTable.AddColumn("dtHeader", "NAME_SALESPER", "String")
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicSP", "SALESPERSON", "NAME_SALESPER")
+
+'F.Data.Dictionary.Close("dicSP")
+
+'Terms
+F.Data.Dictionary.CreateFromSQL("dicTerms", "conx", "select RTRIM(TERMS_CODE) as TERMS_CODE, RTRIM(TERMS_MESSAGE) as TERMS_MESSAGE from V_AP_TERMS")
+F.Data.Dictionary.SetDefaultReturn("dicTerms", "")
+
+F.Data.DataTable.AddColumn("dtHeader", "TERMS_MSG", "String")
+
+F.Data.DataTable.FillFromDictionary("dtHeader", "dicTerms", "TERMS_CODE", "TERMS_MSG")
+
+'F.Data.Dictionary.Close("dicTerms")
+
+'F.Intrinsic.Control.CallSub(GridProps)
+
+'-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+F.Data.DataView.Create("dtHeader", "dvInv", 22)
+
+F.Data.DataView.ToString("dtHeader", "dvInv", "INVOICE", "*!*", "', '", V.Local.sFilter)
+
+F.Data.DataView.Close("dtHeader", "dvInv")
+
+F.Intrinsic.String.Build("Select RTRIM(LTRIM(UCASE(INVOICE))) as CHILD_INVOICE, ORDER_NO as CHILD_ORDER_NO, ORDER_LINE, ORDER_SUFFIX, PART, DESCRIPTION, PRICE, PRICE_DISCOUNT, EXTENSION, PRICE_ORDER, PRICE_DISCOUNT_ORDER, EXTENSION_ORDER, QTY_ORDERED, QTY_SHIPPED, QTY_BO, QTY_ORIGINAL, CUSTOMER_PO, NAME_CUST_SHIP, CITY_SHIP, STATE_SHIP, ZIP_SHIP, DATE_SHIPPED, DATE_ORDER_DUE, DATE_DUE, DATE_INVOICE from V_ORDER_HIST_LINE where INVOICE in ('{0}') order by ORDER_NO ASC, ORDER_LINE ASC", V.Local.sFilter, V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL("dtHeader$dtAdditional", "conx", V.Local.sSql, True)
+
+'F.Data.Datatable.AddTable("dtHeader", "dtAdditional")
+'F.Data.DataTable.AddColumn("dtHeader$dtAdditional", "INVOICE_NO", "String")
+
+F.Data.Dictionary.CreateFromDataTable("dicVerification", "dtHeader", "INVOICE", "INVOICE")
+F.Data.Dictionary.SetDefaultReturn("dicVerification", "***")
+
+F.Data.DataTable.AddColumn("dtHeader$dtAdditional", "VERIFICATION", "String")
+F.Data.DataTable.FillFromDictionary("dtHeader$dtAdditional", "dicVerification", "CHILD_INVOICE", "VERIFICATION")
+
+F.Data.DataView.Create("dtHeader$dtAdditional", "dvUnmatched", 22, "[VERIFICATION] = '***'", "")
+
+F.Data.DataTable.AddRelation("dtHeader", "INVOICE", "dtHeader$dtAdditional", "CHILD_INVOICE")
+F.Data.DataView.Create("dtHeader$dtAdditional", "dvLinesInfo")
+
+'F.Data.DataTable.AddColumn("dtHist", "PART", "String")
+
+'F.Data.Dictionary.CreateFromDataTable("dicPart", "dtAdditional", "INVOICE", "PART")
+'F.Data.Dictionary.SetDefaultReturn("dicPart", "0.00")
+
+'F.Data.DataTable.FillFromDictionary("dtAdditional", "dicPart", "INVOICE", "COM_PARTFREE")
+
+'F.Data.Dictionary.Close("dicPart")
+
+'F.Data.DataTable.AddColumn("dtHist", "PART", "String")
+
+'F.Data.Dictionary.CreateFromDataTable("dicPart", "dtAdditional", "INVOICE", "PART")
+'F.Data.Dictionary.SetDefaultReturn("dicPart", "0.00")
+
+'F.Data.DataTable.FillFromDictionary("dtAdditional", "dicPart", "INVOICE", "COM_PARTFREE")
+
+'F.Data.Dictionary.Close("dicPart")
+
+'F.Data.DataTable.AddColumn("dtHist", "PART", "String")
+
+'F.Data.Dictionary.CreateFromDataTable("dicPart", "dtAdditional", "INVOICE", "PART")
+'F.Data.Dictionary.SetDefaultReturn("dicPart", "0.00")
+
+'F.Data.DataTable.FillFromDictionary("dtAdditional", "dicPart", "INVOICE", "COM_PARTFREE")
+
+'F.Data.Dictionary.Close("dicPart")
+
+
+'F.Data.DataTable.AddColumn("dtDisplay", "COM_RATE", "Float", "0.1")
+'F.Data.DataTable.AddColumn("dtDisplay", "COM_FREE", "Float")
+'F.Data.DataTable.AddColumn("dtDisplay", "COM_SERIES", "Long")
+'F.Data.DataTable.AddColumn("dtDisplay", "SELECTION", "Boolean", False)
+
+'F.Data.DataTable.AddExpressionColumn("dtDisplay", "COMM_DICT", "Float", "[EXTENSION]*[COM_RATE]")
+
+'F.Data.DataTable.SetSeries("dtDisplay", "COM_SERIES", 1, 1)
+
+'F.Data.Dictionary.CreateFromDataTable("dicComms", "dtDisplay", "COM_SERIES", "COMM_DICT")
+'F.Data.Dictionary.SetDefaultReturn("dicComms", "0.00")
+
+'F.Data.DataTable.FillFromDictionary("dtDisplay", "dicComms", "COM_SERIES", "COM_FREE")
+
+'F.Data.Dictionary.Close("dicComms")
+
+'F.Data.Dictionary.CreateFromSQL("dicSalespers", "conx", "Select ID, NAME from V_SALESPERSONS")
+'F.Data.Dictionary.SetDefaultReturn("dicSalespers", "")
+
+'F.Data.DataTable.AddColumn("dtDisplay", "SP_NAME", "String")
+
+'F.Data.DataTable.FillFromDictionary("dtDisplay", "dicSalespers", "SALESPERSON", "SP_NAME")
+
+'F.Data.Dictionary.Close("dicSalespers")
+
+'F.Data.DataTable.AddColumn("dtDisplay", "TERMS_CODE", "String")
+
+'F.Data.Dictionary.CreateFromDataTable("dicTerms", "dtOpen", "INVOICE", "TERMS_CODE")
+'F.Data.Dictionary.SetDefaultReturn("dicTerms", "")
+
+'F.Data.DataTable.FillFromDictionary("dtDisplay", "dicTerms", "INVOICE", "TERMS_CODE")
+
+'F.Data.Dictionary.Close("dicTerms")
+
+'F.Data.DataView.Create("dtDisplay", "dvVisual", "22", "ORDER_LINE <> '8000'", "SALESPERSON ASC")
+
+'Now the customer information:
+F.Data.DataTable.CreateFromSQL("dtCustomers", "conx", "Select CUSTOMER, NAME_CUSTOMER, SALESPERSON from V_CUSTOMER_MASTER", True)
+
+'Terms
+F.Data.Dictionary.CreateFromSQL("dicCustTerms", "conx", "select CUSTOMER, RTRIM(LTRIM(PAYMENT_TERMS)) as PAYMENT_TERMS from V_CUSTOMER_SALES")
+F.Data.Dictionary.SetDefaultReturn("dicCustTerms", "")
+
+F.Data.DataTable.AddColumn("dtCustomers", "TERMS", "String")
+
+F.Data.DataTable.FillFromDictionary("dtCustomers", "dicCustTerms", "CUSTOMER", "TERMS")
+
+F.Data.Dictionary.Close("dicCustTerms")
+
+F.Data.DataTable.AddColumn("dtCustomers", "TERMS_MSG", "String")
+
+F.Data.DataTable.FillFromDictionary("dtCustomers", "dicTerms", "TERMS", "TERMS_MSG")
+
+F.Data.DataTable.AddColumn("dtCustomers", "SP_NAME", "String")
+
+F.Data.DataTable.FillFromDictionary("dtCustomers", "dicSP", "SALESPERSON", "SP_NAME")
+
+F.Data.Dictionary.Close("dicTerms")
+F.Data.Dictionary.Close("dicSP")
+
+F.ODBC.Connection!conx.Close
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.GenerateData.End
+
+Program.Sub.GridProps.Start
+F.Intrinsic.Control.Try
+
+F.Data.DataView.Create("dtHeader", "dvDisplay", 22, "", "INVOICE ASC")
+Gui.F_Com.gsgcComms.AddGridviewFromDataView("gridHead", "dtHeader", "dvDisplay")
+Gui.F_Com.gsgcComms.AddGridviewFromDataView("gridChild", "dtHeader", "dvLinesInfo")
+
+'Gui.F_Com.gsgcComms.AddGridviewFromDatatable("gridHead", "dtHeader")
+'INVOICE*!*ORDER_NO*!*CUSTOMER*!*SALESPERSON*!*TERMS_CODE
+
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridHead", "MultiSelect", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridHead", "AllowSort", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridHead", "AllowFilter", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridHead", "OptionsDetailShowDetailTabs", False)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridHead", "OptionsViewShowGroupPanel", True)
+Gui.F_Com.gsgcComms.SetGridviewProperty("gridHead", "OptionsFilterUseNewCustomFilterDialog", True)
+Gui.F_Com.gsgcComms.SetGridviewProperty("gridHead", "OptionsViewColumnAutoWidth", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "OPEN_CASH", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "HIST_CASH", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "OPEN_MEMOS", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "HIST_MEMOS", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "OPEN_DISCOUNT", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "HIST_DISCOUNT", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "OPEN_REMAIN", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "HIST_REMAIN", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "Visible", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "VisibleIndex", 1)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "VisibleIndex", 2)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "VisibleIndex", 3)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "VisibleIndex", 4)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "VisibleIndex", 5)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "VisibleIndex", 6)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "VisibleIndex", 7)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "VisibleIndex", 8)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "VisibleIndex", 9)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "VisibleIndex", 10)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "VisibleIndex", 11)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "VisibleIndex", 12)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "VisibleIndex", 13)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "VisibleIndex", 14)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "VisibleIndex", 15)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "VisibleIndex", 16)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "VisibleIndex", 17)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "VisibleIndex", 18)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "Caption", "Customer")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "Caption", "Customer Name")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "Caption", "Invoice")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "Caption", "Order No")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "Caption", "Terms")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "Caption", "Terms Message")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "Caption", "Cash")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "Caption", "Credit Memos")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "Caption", "Discounts")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "Caption", "Other")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "Caption", "Payment")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "Caption", "Freight")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "Caption", "Pay no Freight")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "Caption", "Commission Rate")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "Caption", "Commission Pay")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "Caption", "Do not pay")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "Caption", "Salesman")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "Caption", "Salesman Name")
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "AllowEdit", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "AllowEdit", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "AllowEdit", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "ReadOnly", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "ReadOnly", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "ReadOnly", True)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "Width", 75)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "Width", 200)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "Width", 75)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "Width", 75)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "Width", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "Width", 250)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "Width", 55)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "Width", 30)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "Width", 200)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "MinWidth", 30)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "MinWidth", 30)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "MinWidth", 30)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "MinWidth", 45)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "HeaderFontBold", True)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "CUSTOMER", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_CUSTOMER", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVOICE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "ORDER_NO", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_CODE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TERMS_MSG", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "AVOID", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "SALESPERSON", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "NAME_SALESPER", "HeaderHAlignment", "Center")
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_CASH", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_MEMOS", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_DISCOUNT", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_REMAIN", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "TOTAL_PAY", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "FREIGHT_INVC", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "INVC_PAY", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_RATE", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridHead", "COMM_PAY", "DisplayCustomNumeric", "n2")
+
+'CHILD ---------------------------------------------------------------------------------------------
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridChild", "MultiSelect", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridChild", "AllowSort", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridChild", "AllowFilter", True)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridChild", "OptionsDetailShowDetailTabs", False)
+Gui.F_Com.gsgcComms.SetGridViewProperty("gridChild", "OptionsViewShowGroupPanel", True)
+Gui.F_Com.gsgcComms.SetGridviewProperty("gridChild", "OptionsFilterUseNewCustomFilterDialog", True)
+Gui.F_Com.gsgcComms.SetGridviewProperty("gridChild", "OptionsViewColumnAutoWidth", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_INVOICE", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_SUFFIX", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_ORDER", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_BO", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORIGINAL", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "VERIFICATION", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT_ORDER", "Visible", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION_ORDER", "Visible", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "Caption", "Order No")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "Caption", "Line")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "Caption", "Part")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "Caption", "Description")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "Caption", "Order Price")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "Caption", "Line Total")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "Caption", "Qty Ordered")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "Caption", "Qty Shipped")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "Caption", "Ship Date")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "Caption", "Order Due Date")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "Caption", "Due Date")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "Caption", "Invoice Date")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "Caption", "Cusotmer PO")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "Caption", "Customer Name")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "Caption", "City")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "Caption", "State")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "Caption", "Zip")
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "AllowEdit", False)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "ReadOnly", True)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "Width", 75)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "Width", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "Width", 95)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "Width", 200)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "Width", 85)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "Width", 120)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "Width", 200)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "Width", 95)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "Width", 35)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "Width", 75)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "MinWidth", 45)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "MinWidth", 35)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "MinWidth", 45)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "HeaderFontBold", True)
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CHILD_ORDER_NO", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ORDER_LINE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PART", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DESCRIPTION", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CUSTOMER_PO", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "NAME_CUST_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "CITY_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "STATE_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "ZIP_SHIP", "HeaderHAlignment", "Center")
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_ORDERED", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "QTY_SHIPPED", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "PRICE_DISCOUNT", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "EXTENSION", "DisplayCustomNumeric", "n2")
+
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_SHIPPED", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_ORDER_DUE", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_DUE", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcComms.SetColumnProperty("gridChild", "DATE_INVOICE", "DisplayCustomDatetime", "d")
+
+Gui.F_Com.gsgcComms.MainView("gridHead")
+
+'LINES GRID ----------------------------------------------------------------------------------------
+Gui.F_Com.gsgcLines.AddGridviewFromDataView("gridLines", "dtHeader", "dvLinesInfo")
+
+Gui.F_Com.gsgcLines.SetGridViewProperty("gridLines", "MultiSelect", True)
+Gui.F_Com.gsgcLines.SetGridViewProperty("gridLines", "AllowSort", True)
+Gui.F_Com.gsgcLines.SetGridViewProperty("gridLines", "AllowFilter", True)
+Gui.F_Com.gsgcLines.SetGridViewProperty("gridLines", "OptionsDetailShowDetailTabs", False)
+Gui.F_Com.gsgcLines.SetGridViewProperty("gridLines", "OptionsViewShowGroupPanel", True)
+Gui.F_Com.gsgcLines.SetGridviewProperty("gridLines", "OptionsFilterUseNewCustomFilterDialog", True)
+Gui.F_Com.gsgcLines.SetGridviewProperty("gridLines", "OptionsViewColumnAutoWidth", False)
+
+'Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_SUFFIX", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_ORDER", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_BO", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORIGINAL", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "VERIFICATION", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT_ORDER", "Visible", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION_ORDER", "Visible", False)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "Caption", "Order No")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "Caption", "Order No")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "Caption", "Line")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "Caption", "Part")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "Caption", "Description")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "Caption", "Order Price")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "Caption", "Line Total")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "Caption", "Qty Ordered")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "Caption", "Qty Shipped")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "Caption", "Ship Date")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "Caption", "Order Due Date")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "Caption", "Due Date")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "Caption", "Invoice Date")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "Caption", "Cusotmer PO")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "Caption", "Customer Name")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "Caption", "City")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "Caption", "State")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "Caption", "Zip")
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "AllowEdit", False)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "AllowEdit", False)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "ReadOnly", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "ReadOnly", True)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "Width", 75)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "Width", 75)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "Width", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "Width", 95)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "Width", 200)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "Width", 85)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "Width", 120)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "Width", 200)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "Width", 95)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "Width", 35)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "Width", 75)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "MinWidth", 45)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "MinWidth", 35)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "MinWidth", 45)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "HeaderFontBold", True)
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "HeaderFontBold", True)
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_INVOICE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CHILD_ORDER_NO", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ORDER_LINE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PART", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DESCRIPTION", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CUSTOMER_PO", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "NAME_CUST_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "CITY_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "STATE_SHIP", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "ZIP_SHIP", "HeaderHAlignment", "Center")
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_ORDERED", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "QTY_SHIPPED", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "PRICE_DISCOUNT", "DisplayCustomNumeric", "n2")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "EXTENSION", "DisplayCustomNumeric", "n2")
+
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_SHIPPED", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_ORDER_DUE", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_DUE", "DisplayCustomDatetime", "d")
+Gui.F_Com.gsgcLines.SetColumnProperty("gridLines", "DATE_INVOICE", "DisplayCustomDatetime", "d")
+
+Gui.F_Com.gsgcLines.MainView("gridLines")
+
+'CUSTOMERS GRID ------------------------------------------------------------------------------------
+Gui.F_Com.gsgcCustomers.AddGridviewFromDatatable("gridCustomers", "dtCustomers")
+
+Gui.F_Com.gsgcCustomers.SetGridViewProperty("gridCustomers", "MultiSelect", True)
+Gui.F_Com.gsgcCustomers.SetGridViewProperty("gridCustomers", "AllowSort", True)
+Gui.F_Com.gsgcCustomers.SetGridViewProperty("gridCustomers", "AllowFilter", True)
+Gui.F_Com.gsgcCustomers.SetGridViewProperty("gridCustomers", "OptionsDetailShowDetailTabs", False)
+Gui.F_Com.gsgcCustomers.SetGridViewProperty("gridCustomers", "OptionsViewShowGroupPanel", True)
+Gui.F_Com.gsgcCustomers.SetGridviewProperty("gridCustomers", "OptionsFilterUseNewCustomFilterDialog", True)
+Gui.F_Com.gsgcCustomers.SetGridviewProperty("gridCustomers", "OptionsViewColumnAutoWidth", False)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SALESPERSON", "Visible", False)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "Caption", "Customer No")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "Caption", "Customer Name")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "Caption", "Salesman")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "Caption", "Terms")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "Caption", "Terms Message")
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "AllowEdit", False)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "AllowEdit", False)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "AllowEdit", False)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "AllowEdit", False)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "AllowEdit", False)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "ReadOnly", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "ReadOnly", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "ReadOnly", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "ReadOnly", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "ReadOnly", True)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "Width", 75)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "Width", 250)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "Width", 250)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "Width", 55)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "Width", 200)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "MinWidth", 50)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "MinWidth", 50)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "MinWidth", 40)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "MinWidth", 40)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "MinWidth", 40)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "HeaderFontBold", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "HeaderFontBold", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "HeaderFontBold", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "HeaderFontBold", True)
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "HeaderFontBold", True)
+
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "CUSTOMER", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "NAME_CUSTOMER", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "SP_NAME", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS", "HeaderHAlignment", "Center")
+Gui.F_Com.gsgcCustomers.SetColumnProperty("gridCustomers", "TERMS_MSG", "HeaderHAlignment", "Center")
+
+Gui.F_Com.gsgcCustomers.MainView("gridCustomers")
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.GridProps.End
+
+Program.Sub.Export.Start
+F.Intrinsic.Control.Try
+V.Local.sTemp.Declare(String, "")
+V.Local.sConduit.Declare(String, "")
+V.Local.iHandle.Declare(Long, 0)
+V.Local.bRet.Declare(Boolean, False)
+
+'We check for the presence of excel. If so, we export to excel, otherwise make a csv
+
+'Check to see if the workstation has MS Excel Installed
+F.Automation.MSExcel.CheckPresence(V.Local.bRet)
+F.Intrinsic.Control.If(V.Local.bRet,=,False)
+	V.Local.sConduit.Set("csv")
+F.Intrinsic.Control.Else
+	V.Local.sConduit.Set("xlsx")
+F.Intrinsic.Control.EndIf
+
+'Generate the temp file name 
+F.Intrinsic.File.MakeFilenameFriendly(V.Ambient.Now, V.Local.sTemp)
+F.Intrinsic.String.Replace(V.Local.sTemp, " ", "", V.Local.sTemp)
+F.Intrinsic.String.Build("{0}\{1}.{2}", V.Caller.TempDir, V.Local.sTemp, V.Local.sConduit, V.Local.sTemp)
+
+F.Intrinsic.Control.SelectCase(V.Args.MenuName.UCase)
+F.Intrinsic.Control.Case("CTXCOMMS")
+	Gui.F_Com.gsgcComms.Export(V.Local.sTemp, V.Local.sConduit)
+
+F.Intrinsic.Control.Case("CTXLINES")
+	Gui.F_Com.gsgcLines.Export(V.Local.sTemp, V.Local.sConduit)
+
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Task.ShellExec(V.Local.iHandle, "Edit", V.Local.sTemp, "", "", 1)
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.Export.End
+
+Program.Sub.Serialize.Start
+F.Intrinsic.Control.Try
+V.Local.sSerialize.Declare(String, "")
+
+'commission grids
+Gui.F_Com.gsgcComms.Serialize("gridHead", V.Local.sSerialize)
+F.Global.Registry.AddValue(V.Caller.User, V.Caller.CompanyCode, "GRIDHEAD", 6414, 1000, False, "Serialize", False, 0, -999.0, 1/1/1980, 12:00:00 AM, V.Local.sSerialize)
+
+Gui.F_Com.gsgcComms.Serialize("gridChild", V.Local.sSerialize)
+F.Global.Registry.AddValue(V.Caller.User, V.Caller.CompanyCode, "GRIDCHILD", 6414, 1000, False, "Serialize", False, 0, -999.0, 1/1/1980, 12:00:00 AM, V.Local.sSerialize)
+
+'Order Lines grid
+Gui.F_Com.gsgcLines.Serialize("gridLines", V.Local.sSerialize)
+F.Global.Registry.AddValue(V.Caller.User, V.Caller.CompanyCode, "GRIDLINES", 6414, 1000, False, "Serialize", False, 0, -999.0, 1/1/1980, 12:00:00 AM, V.Local.sSerialize)
+
+'customer grid
+Gui.F_Com.gsgcCustomers.Serialize("gridCustomers", V.Local.sSerialize)
+F.Global.Registry.AddValue(V.Caller.User, V.Caller.CompanyCode, "GRIDCUSTOMERS", 6414, 1000, False, "Serialize", False, 0, -999.0, 1/1/1980, 12:00:00 AM, V.Local.sSerialize)
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.Serialize.End
+
+Program.Sub.Deserialize.Start
+F.Intrinsic.Control.Try
+V.Local.sSerialize.Declare(String, "")
+
+'Header of the commissions dash
+F.Global.Registry.ReadValue(V.Caller.User, V.Caller.CompanyCode, "GRIDHEAD", 6414, 1000, 6, "", V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize.Trim, <>, "")
+	Gui.F_Com.gsgcComms.Deserialize(V.Local.sSerialize)
+F.Intrinsic.Control.EndIf
+
+'details of the commissions dash
+F.Global.Registry.ReadValue(V.Caller.User, V.Caller.CompanyCode, "GRIDCHILD", 6414, 1000, 6, "", V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize.Trim, <>, "")
+	Gui.F_Com.gsgcComms.Deserialize(V.Local.sSerialize)
+F.Intrinsic.Control.EndIf
+
+'details of the Lines dash
+F.Global.Registry.ReadValue(V.Caller.User, V.Caller.CompanyCode, "GRIDLINES", 6414, 1000, 6, "", V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize.Trim, <>, "")
+	Gui.F_Com.gsgcLines.Deserialize(V.Local.sSerialize)
+F.Intrinsic.Control.EndIf
+
+'details of the Customers dash
+F.Global.Registry.ReadValue(V.Caller.User, V.Caller.CompanyCode, "GRIDCUSTOMERS", 6414, 1000, 6, "", V.Local.sSerialize)
+F.Intrinsic.Control.If(V.Local.sSerialize.Trim, <>, "")
+	Gui.F_Com.gsgcCustomers.Deserialize(V.Local.sSerialize)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.Deserialize.End
+
+Program.Sub.OkayButtonClick.Start
+F.Intrinsic.Control.Try
+
+'We will load in the information for the dashboards
+Gui.F_Date..Visible(False)
+
+F.Intrinsic.Control.CallSub(GenerateData)
+F.Intrinsic.Control.CallSub(GridProps)
+F.Intrinsic.Control.CallSub(Deserialize)
+
+Gui.F_Com.tabComs.SetTab(0)
+
+Gui.F_Com..Show
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.EndTry
+Program.Sub.OkayButtonClick.End
+
+Program.Sub.EarlyUnload.Start
+F.Intrinsic.Control.Try
+
+'This is just in case they click on x during the date selection of the process, when the program is first initialized
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+F.Intrinsic.Control.CallSub(Error, "Subroutine", V.Ambient.CurrentSubroutine, "ErrorDesc", V.Ambient.ErrorDescription, "ErrorNo", V.Ambient.ErrorNumber)
+F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.EarlyUnload.End
